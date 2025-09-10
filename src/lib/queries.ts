@@ -19,6 +19,8 @@ import type {
   TallyParams,
   DistributionParams,
   StakingParams,
+  GovV1Params,
+  GovV1ParamsQueryResponse,
 } from "../types/gov";
 
 export const swingSetParamsQuery = (
@@ -169,6 +171,18 @@ export const ibcDenomHashQuery = (
     );
     const data: DenomHashResponse = await res.json();
     return data?.hash?.length ? `ibc/${data.hash}` : "Denom hash not found.";
+  },
+  enabled: !!api,
+});
+
+export const govV1ParamsQuery = (
+  api: string | undefined,
+): UseQueryOptions<GovV1Params, unknown> => ({
+  queryKey: ["govV1Params", api],
+  queryFn: async (): Promise<GovV1Params> => {
+    const res = await fetch(`${api}/cosmos/gov/v1/params/`);
+    const data: GovV1ParamsQueryResponse = await res.json();
+    return data?.params;
   },
   enabled: !!api,
 });

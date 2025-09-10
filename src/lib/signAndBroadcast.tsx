@@ -16,7 +16,7 @@ export const makeSignAndBroadcast =
   ) =>
   async (
     proposalMsg: EncodeObject,
-    type: "bundle" | "proposal" = "proposal",
+    toastType: "bundle" | "bundle-chunk" | "proposal" = "proposal",
   ) => {
     if (!stargateClient) {
       toast.error("Network not connected.", { autoClose: 3000 });
@@ -58,7 +58,7 @@ export const makeSignAndBroadcast =
             resp={txResult as DeliverTxResponse}
             netName={netName as NetName}
             closeToast={closeToast as () => void}
-            type={type}
+            type={toastType}
           />
         ),
         type: "success",

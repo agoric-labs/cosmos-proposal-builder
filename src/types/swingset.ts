@@ -35,6 +35,8 @@ export type SwingSetParams = {
   bootstrap_vat_config: string;
   power_flag_fees: PowerFlagFee[];
   queue_max: QueueMax[];
+  bundle_uncompressed_size_limit_bytes: string;
+  chunk_size_limit_bytes?: string;
 };
 
 export type SwingSetApiResponse = {

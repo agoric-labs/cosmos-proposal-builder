@@ -15,7 +15,7 @@ describe("Agoric Config", () => {
       </Router>,
     );
 
-    const tabListEl = await screen.findByRole("tablist");
+    const tabListEl = (await screen.findAllByRole("tablist"))[0];
     expect(tabListEl).toBeTruthy();
 
     const tabs = [...tabListEl.querySelectorAll("button")].map(
@@ -30,28 +30,18 @@ describe("Agoric Config", () => {
     ]);
   });
 
-  vi.mock("../../hooks/useWallet", () => ({
-    useWallet: vi.fn(() => ({
-      walletAddress: "agoric12se",
-      stargateClient: {
-        simulate: vi.fn(),
-        signAndBroadcast: vi.fn(),
-      },
-    })),
-  }));
-
-  vi.mock("../../lib/signAndBroadcast", () => ({
-    makeSignAndBroadcast: vi.fn(),
-  }));
-  it(" renders comm spend proposal form", async () => {
+  it("renders comm spend proposal form", async () => {
     render(
       <Router hook={memoryLocation("/agoric")}>
         <ContextProviders>
           <App />
         </ContextProviders>
-        ,
       </Router>,
     );
+
+    // Wait for the tabs to render
+    await screen.findAllByRole("tablist");
+
     const communityPoolSpendTab = await screen.findByRole("tab", {
       name: "Community Pool Spend",
     });

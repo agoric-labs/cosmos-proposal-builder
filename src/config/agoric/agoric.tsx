@@ -4,6 +4,7 @@ import { Code } from "../../components/inline";
 import { BundleForm, BundleFormArgs } from "../../components/BundleForm";
 import { ProposalForm, ProposalArgs } from "../../components/ProposalForm";
 import { Tabs } from "../../components/Tabs";
+import { GovV1ParameterInputs } from "../../components/GovV1ParameterInputs";
 import { useNetwork } from "../../hooks/useNetwork";
 import { useWallet } from "../../hooks/useWallet";
 import { compressBundle } from "../../lib/compression";
@@ -13,6 +14,9 @@ import {
   makeInstallBundleMsg,
   makeParamChangeProposalMsg,
   makeCommunityPoolSpendProposalMsg,
+  makeGovV1ProposalMsg,
+  makeMsgUpdateGovParams,
+  createGovV1UpdateParamsAny
 } from "../../lib/messageBuilder";
 import { isValidBundle } from "../../utils/validate";
 import { makeSignAndBroadcast } from "../../lib/signAndBroadcast";
@@ -139,6 +143,97 @@ const Agoric = () => {
       }
     };
   }
+
+  // Special handler for Gov v1 parameter changes
+  function handleGovV1ParameterChange() {
+    return async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      
+      if (!walletAddress) {
+        toast.error("Wallet not connected.", { autoClose: 3000 });
+        throw new Error("wallet not connected");
+      }
+
+      const formData = new FormData(event.target as HTMLFormElement);
+      
+      // Extract Gov v1 form data
+      const authority = formData.get("authority") as string;
+      const title = formData.get("title") as string;
+      const description = formData.get("description") as string;
+      
+      if (!authority || !title || !description) {
+        toast.error("Please fill in all required fields.", { autoClose: 3000 });
+        return;
+      }
+
+      // Extract ALL parameter data from form - validate all required fields
+      const maxDepositPeriod = formData.get("maxDepositPeriod") as string;
+      const votingPeriod = formData.get("votingPeriod") as string;
+      const quorum = formData.get("quorum") as string;
+      const threshold = formData.get("threshold") as string;
+      const vetoThreshold = formData.get("vetoThreshold") as string;
+      const minInitialDepositRatio = formData.get("minInitialDepositRatio") as string;
+      const min_deposit_ratio = formData.get("min_deposit_ratio") as string;
+      const proposal_cancel_ratio = formData.get("proposal_cancel_ratio") as string;
+      const expedited_voting_period = formData.get("expedited_voting_period") as string;
+      const expedited_threshold = formData.get("expedited_threshold") as string;
+
+      if (!maxDepositPeriod || !votingPeriod || !quorum || !threshold || !vetoThreshold || !minInitialDepositRatio || 
+          !min_deposit_ratio || !proposal_cancel_ratio || !expedited_voting_period || !expedited_threshold) {
+        toast.error("All parameter fields are required. Please ensure all fields are filled.", { autoClose: 3000 });
+        return;
+      }
+
+      const govV1FormData = {
+        minDeposit: [{ denom: "ubld", amount: "1000000" }], // TODO: get from form's dynamic inputs
+        maxDepositPeriod,
+        votingPeriod,
+        quorum,
+        threshold,
+        vetoThreshold,
+        minInitialDepositRatio,
+        min_deposit_ratio,
+        proposal_cancel_ratio,
+        expedited_min_deposit: [{ denom: "stake", amount: "50000000" }], // TODO: get from form's dynamic inputs
+        expedited_threshold,
+        expedited_voting_period,
+        burnVoteQuorum: formData.get("burnVoteQuorum") === "on",
+        burnProposalDepositPrevote: formData.get("burnProposalDepositPrevote") === "on",
+        burnVoteVeto: formData.get("burnVoteVeto") === "on",
+      };
+
+      try {
+        // 1. Create MsgUpdateParams
+        const msgUpdateParams = makeMsgUpdateGovParams({
+          authority,
+          formData: govV1FormData,
+        });
+
+        // 2. Encode as Any
+        const anyMsg = createGovV1UpdateParamsAny(msgUpdateParams);
+
+        // 3. Create MsgSubmitProposal with the encoded message
+        const proposalMsg = makeGovV1ProposalMsg({
+          messages: [anyMsg],
+          initialDeposit: minDeposit || [],
+          proposer: walletAddress,
+          metadata: "",
+          title,
+          summary: description,
+        });
+
+        // 4. Submit
+        await signAndBroadcast(proposalMsg, "proposal");
+        proposalFormRef.current?.reset();
+        
+        toast.success("Gov v1 parameter change proposal submitted!", { autoClose: 5000 });
+      } catch (e) {
+        console.error(e);
+        toast.error("Failed to submit proposal. Check console for details.", { autoClose: 5000 });
+      }
+    };
+  }
+
   const [alertBox, setAlertBox] = useState(true);
 
   const canDeposit = useMemo(
@@ -306,6 +401,80 @@ const Agoric = () => {
                 governanceForumLink="https://community.agoric.com/c/governance/community-pool-spend-proposals/15"
                 msgType="communityPoolSpendProposal"
               />
+            ),
+          },
+          {
+            title: "Gov v1 Parameters",
+            msgType: "govV1ParameterChange",
+            content: (
+              <form onSubmit={handleGovV1ParameterChange()}>
+                <div className="space-y-12 sm:space-y-16">
+                  <div>
+                    <h2 className="text-[28px] font-semibold text-blue">
+                      Gov v1 Parameter Change Proposal
+                    </h2>
+                    <p className="mt-4 text-sm text-grey">
+                      This is a governance proposal to update governance module parameters using Gov v1. 
+                      This includes settings like voting periods, deposit requirements, and burn settings.
+                    </p>
+
+                    <div className="mt-[30px] border-t border-dotted border-lightgrey py-[20px] sm:border-t sm:pb-0">
+                      
+                      {/* Title and Description - moved to top */}
+                      <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-1.5 sm:pb-6">
+                        <label htmlFor="title" className="block text-sm font-medium text-blue">
+                          Title
+                        </label>
+                        <div>
+                          <input
+                            type="text"
+                            name="title"
+                            id="title"
+                            placeholder="Update Governance Parameters"
+                            className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-1.5 sm:pb-6">
+                        <label htmlFor="description" className="text-sm font-medium text-blue">
+                          Description
+                        </label>
+                        <div>
+                          <textarea
+                            name="description"
+                            id="description"
+                            rows={4}
+                            placeholder="Describe the parameter changes and their rationale..."
+                            className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Gov v1 Parameters - moved below title/description */}
+                      <GovV1ParameterInputs />
+
+                      {/* Submit Button */}
+                      <div className="pt-6">
+                        <button
+                          type="submit"
+                          disabled={!canDeposit}
+                          className="inline-flex justify-center rounded-md bg-red px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red disabled:opacity-50"
+                        >
+                          Submit Proposal
+                        </button>
+                        {!canDeposit && (
+                          <p className="mt-2 text-sm text-gray-600">
+                            Insufficient balance for proposal deposit: {renderCoins(minDeposit || [])}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
             ),
           },
         ]}

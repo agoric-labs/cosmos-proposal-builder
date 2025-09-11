@@ -12,13 +12,16 @@ export interface GovV1ParameterInputsMethods {
 }
 
 const GovV1ParameterInputsBase = (
-  _props: {},
-  ref: React.ForwardedRef<GovV1ParameterInputsMethods>
+  props: {
+    defaultAuthorityAddress: string | undefined;
+  },
+  ref: React.ForwardedRef<GovV1ParameterInputsMethods>,
 ) => {
+  const { defaultAuthorityAddress } = props;
   const { api } = useNetwork();
   const paramsQuery = useQuery(govV1ParamsQuery(api));
   const currentParams = selectGovV1Params(paramsQuery);
-  
+
   // State for form data
   const [formData, setFormData] = useState<GovV1ParamFormData | null>(null);
 
@@ -42,7 +45,11 @@ const GovV1ParameterInputsBase = (
   };
 
   // Helper to update minDeposit array
-  const updateMinDeposit = (index: number, field: 'denom' | 'amount', value: string) => {
+  const updateMinDeposit = (
+    index: number,
+    field: "denom" | "amount",
+    value: string,
+  ) => {
     if (!formData) return;
     const newMinDeposit = [...(formData?.minDeposit || [])];
     newMinDeposit[index] = { ...newMinDeposit[index], [field]: value };
@@ -51,15 +58,17 @@ const GovV1ParameterInputsBase = (
 
   const addMinDeposit = () => {
     if (!formData) return;
-    setFormData({ 
-      ...formData, 
-      minDeposit: [...(formData?.minDeposit || []), { denom: "", amount: "" }]
+    setFormData({
+      ...formData,
+      minDeposit: [...(formData?.minDeposit || []), { denom: "", amount: "" }],
     });
   };
 
   const removeMinDeposit = (index: number) => {
     if (!formData) return;
-    const newMinDeposit = (formData?.minDeposit || []).filter((_, i) => i !== index);
+    const newMinDeposit = (formData?.minDeposit || []).filter(
+      (_, i) => i !== index,
+    );
     setFormData({ ...formData, minDeposit: newMinDeposit });
   };
 
@@ -77,7 +86,9 @@ const GovV1ParameterInputsBase = (
       <div className="mt-10 text-center text-red-600">
         ⚠️ Error loading governance parameters: {paramsQuery.error?.toString()}
         <br />
-        <span className="text-sm">Please check your network connection and API endpoint.</span>
+        <span className="text-sm">
+          Please check your network connection and API endpoint.
+        </span>
       </div>
     );
   }
@@ -89,8 +100,8 @@ const GovV1ParameterInputsBase = (
         <br />
         <span className="text-sm">
           The API did not return any Gov v1 parameters. This could be due to:
-          <br />
-          • <strong>No chain selected</strong> - Please select a network first
+          <br />• <strong>No chain selected</strong> - Please select a network
+          first
           <br />
           • You're connected to a chain that doesn't support Gov v1
           <br />
@@ -101,9 +112,11 @@ const GovV1ParameterInputsBase = (
           <br />
           <strong>Current API:</strong> {api || "None selected"}
           <br />
-          <strong>Query endpoint:</strong> {api ? `${api}/cosmos/gov/v1/params` : "No API endpoint"}
+          <strong>Query endpoint:</strong>{" "}
+          {api ? `${api}/cosmos/gov/v1/params` : "No API endpoint"}
           <br />
-          <strong>Raw response:</strong> {JSON.stringify(paramsQuery.data) || "Empty/null"}
+          <strong>Raw response:</strong>{" "}
+          {JSON.stringify(paramsQuery.data) || "Empty/null"}
         </span>
       </div>
     );
@@ -119,32 +132,31 @@ const GovV1ParameterInputsBase = (
 
   return (
     <div className="mt-10 space-y-8 border-gray-900/10 pb-12 sm:space-y-0 sm:divide-y sm:divide-gray-900/10 sm:border-t sm:pb-0">
-      
       {/* Authority Section */}
       <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-2 sm:py-6">
         <label htmlFor="authority" className="text-sm font-medium text-blue">
           Governance Authority Address
         </label>
         <div>
-          <input 
-            type="text" 
-            name="authority" 
-            id="authority" 
-            placeholder="cosmos1..." 
+          <input
+            type="text"
+            name="authority"
+            id="authority"
+            placeholder="cosmos1..."
+            defaultValue={defaultAuthorityAddress}
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
             required
           />
           <p className="mt-1 text-xs leading-6 text-gray-600">
-            The governance module authority address (required for parameter updates)
+            The governance module authority address (required for parameter
+            updates)
           </p>
         </div>
       </div>
 
       {/* Min Deposit Section */}
       <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-2 sm:py-6">
-        <label className="text-sm font-medium text-blue">
-          Minimum Deposit
-        </label>
+        <label className="text-sm font-medium text-blue">Minimum Deposit</label>
         <div className="space-y-2">
           {formData?.minDeposit?.map((deposit, index) => (
             <div key={index} className="flex gap-2 items-center">
@@ -152,17 +164,21 @@ const GovV1ParameterInputsBase = (
                 type="text"
                 placeholder="Denom (e.g., ubld)"
                 value={deposit.denom}
-                onChange={(e) => updateMinDeposit(index, 'denom', e.target.value)}
+                onChange={(e) =>
+                  updateMinDeposit(index, "denom", e.target.value)
+                }
                 className="flex-1 rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
               />
               <input
                 type="number"
                 placeholder="Amount"
                 value={deposit.amount}
-                onChange={(e) => updateMinDeposit(index, 'amount', e.target.value)}
+                onChange={(e) =>
+                  updateMinDeposit(index, "amount", e.target.value)
+                }
                 className="flex-1 rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => removeMinDeposit(index)}
                 className="px-3 py-2 text-sm text-red-600 hover:text-red-800"
@@ -172,7 +188,7 @@ const GovV1ParameterInputsBase = (
               </button>
             </div>
           ))}
-          <button 
+          <button
             type="button"
             onClick={addMinDeposit}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -185,32 +201,38 @@ const GovV1ParameterInputsBase = (
       {/* Duration Fields */}
       <div className="sm:grid sm:grid-cols-2 sm:gap-4">
         <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-2 sm:py-6">
-          <label htmlFor="maxDepositPeriod" className="text-sm font-medium text-blue">
+          <label
+            htmlFor="maxDepositPeriod"
+            className="text-sm font-medium text-blue"
+          >
             Max Deposit Period (seconds)
           </label>
-          <input 
-            type="number" 
-            name="maxDepositPeriod" 
+          <input
+            type="number"
+            name="maxDepositPeriod"
             id="maxDepositPeriod"
             value={formData?.maxDepositPeriod || ""}
-            onChange={(e) => updateField('maxDepositPeriod', e.target.value)}
+            onChange={(e) => updateField("maxDepositPeriod", e.target.value)}
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
           <p className="mt-1 text-xs leading-6 text-gray-600">
             Time for deposits in seconds (e.g., 172800 = 48 hours)
           </p>
         </div>
-        
+
         <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-2 sm:py-6">
-          <label htmlFor="votingPeriod" className="text-sm font-medium text-blue">
+          <label
+            htmlFor="votingPeriod"
+            className="text-sm font-medium text-blue"
+          >
             Voting Period (seconds)
           </label>
-          <input 
-            type="number" 
-            name="votingPeriod" 
+          <input
+            type="number"
+            name="votingPeriod"
             id="votingPeriod"
             value={formData?.votingPeriod || ""}
-            onChange={(e) => updateField('votingPeriod', e.target.value)}
+            onChange={(e) => updateField("votingPeriod", e.target.value)}
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
           <p className="mt-1 text-xs leading-6 text-gray-600">
@@ -225,102 +247,127 @@ const GovV1ParameterInputsBase = (
           <label htmlFor="quorum" className="text-sm font-medium text-blue">
             Quorum
           </label>
-          <input 
-            type="text" 
-            name="quorum" 
+          <input
+            type="text"
+            name="quorum"
             id="quorum"
             value={formData?.quorum || ""}
-            onChange={(e) => updateField('quorum', e.target.value)}
+            onChange={(e) => updateField("quorum", e.target.value)}
             placeholder="0.334000000000000000"
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
-          <p className="mt-1 text-xs text-gray-600">33.4% = 0.334000000000000000</p>
+          <p className="mt-1 text-xs text-gray-600">
+            33.4% = 0.334000000000000000
+          </p>
         </div>
-        
+
         <div className="sm:py-6">
           <label htmlFor="threshold" className="text-sm font-medium text-blue">
             Threshold
           </label>
-          <input 
-            type="text" 
-            name="threshold" 
+          <input
+            type="text"
+            name="threshold"
             id="threshold"
             value={formData?.threshold || ""}
-            onChange={(e) => updateField('threshold', e.target.value)}
+            onChange={(e) => updateField("threshold", e.target.value)}
             placeholder="0.500000000000000000"
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
-          <p className="mt-1 text-xs text-gray-600">50% = 0.500000000000000000</p>
+          <p className="mt-1 text-xs text-gray-600">
+            50% = 0.500000000000000000
+          </p>
         </div>
-        
+
         <div className="sm:py-6">
-          <label htmlFor="vetoThreshold" className="text-sm font-medium text-blue">
+          <label
+            htmlFor="vetoThreshold"
+            className="text-sm font-medium text-blue"
+          >
             Veto Threshold
           </label>
-          <input 
-            type="text" 
-            name="vetoThreshold" 
+          <input
+            type="text"
+            name="vetoThreshold"
             id="vetoThreshold"
             value={formData?.vetoThreshold || ""}
-            onChange={(e) => updateField('vetoThreshold', e.target.value)}
+            onChange={(e) => updateField("vetoThreshold", e.target.value)}
             placeholder="0.334000000000000000"
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
-          <p className="mt-1 text-xs text-gray-600">33.4% = 0.334000000000000000</p>
+          <p className="mt-1 text-xs text-gray-600">
+            33.4% = 0.334000000000000000
+          </p>
         </div>
       </div>
 
       {/* Additional Ratios */}
       <div className="sm:grid sm:grid-cols-2 sm:gap-4">
         <div className="sm:py-6">
-          <label htmlFor="minInitialDepositRatio" className="text-sm font-medium text-blue">
+          <label
+            htmlFor="minInitialDepositRatio"
+            className="text-sm font-medium text-blue"
+          >
             Min Initial Deposit Ratio
           </label>
-          <input 
-            type="text" 
-            name="minInitialDepositRatio" 
+          <input
+            type="text"
+            name="minInitialDepositRatio"
             id="minInitialDepositRatio"
             value={formData?.minInitialDepositRatio || ""}
-            onChange={(e) => updateField('minInitialDepositRatio', e.target.value)}
+            onChange={(e) =>
+              updateField("minInitialDepositRatio", e.target.value)
+            }
             placeholder="0.000000000000000000"
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
-          <p className="mt-1 text-xs text-gray-600">Initial deposit ratio required</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Initial deposit ratio required
+          </p>
         </div>
 
         <div className="sm:py-6">
-          <label htmlFor="min_deposit_ratio" className="text-sm font-medium text-blue">
+          <label
+            htmlFor="min_deposit_ratio"
+            className="text-sm font-medium text-blue"
+          >
             Min Deposit Ratio
           </label>
-          <input 
-            type="text" 
-            name="min_deposit_ratio" 
+          <input
+            type="text"
+            name="min_deposit_ratio"
             id="min_deposit_ratio"
             value={formData?.min_deposit_ratio || ""}
-            onChange={(e) => updateField('min_deposit_ratio', e.target.value)}
+            onChange={(e) => updateField("min_deposit_ratio", e.target.value)}
             placeholder="0.010000000000000000"
             className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
           />
-          <p className="mt-1 text-xs text-gray-600">1% = 0.010000000000000000</p>
+          <p className="mt-1 text-xs text-gray-600">
+            1% = 0.010000000000000000
+          </p>
         </div>
       </div>
 
       {/* Proposal Cancellation */}
       <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-2 sm:py-6">
-        <label htmlFor="proposal_cancel_ratio" className="text-sm font-medium text-blue">
+        <label
+          htmlFor="proposal_cancel_ratio"
+          className="text-sm font-medium text-blue"
+        >
           Proposal Cancel Ratio
         </label>
-        <input 
-          type="text" 
-          name="proposal_cancel_ratio" 
+        <input
+          type="text"
+          name="proposal_cancel_ratio"
           id="proposal_cancel_ratio"
           value={formData?.proposal_cancel_ratio || ""}
-          onChange={(e) => updateField('proposal_cancel_ratio', e.target.value)}
+          onChange={(e) => updateField("proposal_cancel_ratio", e.target.value)}
           placeholder="0.500000000000000000"
           className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
         />
         <p className="mt-1 text-xs leading-6 text-gray-600">
-          Ratio of total stake needed to cancel a proposal (50% = 0.500000000000000000)
+          Ratio of total stake needed to cancel a proposal (50% =
+          0.500000000000000000)
         </p>
       </div>
 
@@ -329,18 +376,23 @@ const GovV1ParameterInputsBase = (
         <label className="text-sm font-medium text-blue">
           Expedited Proposal Settings
         </label>
-        
+
         <div className="sm:grid sm:grid-cols-2 sm:gap-4 mt-4">
           <div>
-            <label htmlFor="expedited_voting_period" className="text-sm font-medium text-blue">
+            <label
+              htmlFor="expedited_voting_period"
+              className="text-sm font-medium text-blue"
+            >
               Expedited Voting Period (seconds)
             </label>
-            <input 
-              type="number" 
-              name="expedited_voting_period" 
+            <input
+              type="number"
+              name="expedited_voting_period"
               id="expedited_voting_period"
               value={formData?.expedited_voting_period || ""}
-              onChange={(e) => updateField('expedited_voting_period', e.target.value)}
+              onChange={(e) =>
+                updateField("expedited_voting_period", e.target.value)
+              }
               placeholder="86400"
               className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
             />
@@ -348,19 +400,26 @@ const GovV1ParameterInputsBase = (
           </div>
 
           <div>
-            <label htmlFor="expedited_threshold" className="text-sm font-medium text-blue">
+            <label
+              htmlFor="expedited_threshold"
+              className="text-sm font-medium text-blue"
+            >
               Expedited Threshold
             </label>
-            <input 
-              type="text" 
-              name="expedited_threshold" 
+            <input
+              type="text"
+              name="expedited_threshold"
               id="expedited_threshold"
               value={formData?.expedited_threshold || ""}
-              onChange={(e) => updateField('expedited_threshold', e.target.value)}
+              onChange={(e) =>
+                updateField("expedited_threshold", e.target.value)
+              }
               placeholder="0.667000000000000000"
               className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
             />
-            <p className="mt-1 text-xs text-gray-600">66.7% = 0.667000000000000000</p>
+            <p className="mt-1 text-xs text-gray-600">
+              66.7% = 0.667000000000000000
+            </p>
           </div>
         </div>
 
@@ -377,9 +436,14 @@ const GovV1ParameterInputsBase = (
                   placeholder="Denom (e.g., stake)"
                   value={deposit.denom}
                   onChange={(e) => {
-                    const newExpedited = [...(formData?.expedited_min_deposit || [])];
-                    newExpedited[index] = { ...newExpedited[index], denom: e.target.value };
-                    updateField('expedited_min_deposit', newExpedited);
+                    const newExpedited = [
+                      ...(formData?.expedited_min_deposit || []),
+                    ];
+                    newExpedited[index] = {
+                      ...newExpedited[index],
+                      denom: e.target.value,
+                    };
+                    updateField("expedited_min_deposit", newExpedited);
                   }}
                   className="flex-1 rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
                 />
@@ -388,30 +452,42 @@ const GovV1ParameterInputsBase = (
                   placeholder="Amount"
                   value={deposit.amount}
                   onChange={(e) => {
-                    const newExpedited = [...(formData?.expedited_min_deposit || [])];
-                    newExpedited[index] = { ...newExpedited[index], amount: e.target.value };
-                    updateField('expedited_min_deposit', newExpedited);
+                    const newExpedited = [
+                      ...(formData?.expedited_min_deposit || []),
+                    ];
+                    newExpedited[index] = {
+                      ...newExpedited[index],
+                      amount: e.target.value,
+                    };
+                    updateField("expedited_min_deposit", newExpedited);
                   }}
                   className="flex-1 rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => {
-                    const newExpedited = (formData?.expedited_min_deposit || []).filter((_, i) => i !== index);
-                    updateField('expedited_min_deposit', newExpedited);
+                    const newExpedited = (
+                      formData?.expedited_min_deposit || []
+                    ).filter((_, i) => i !== index);
+                    updateField("expedited_min_deposit", newExpedited);
                   }}
                   className="px-3 py-2 text-sm text-red-600 hover:text-red-800"
-                  disabled={(formData?.expedited_min_deposit?.length || 0) === 1}
+                  disabled={
+                    (formData?.expedited_min_deposit?.length || 0) === 1
+                  }
                 >
                   Remove
                 </button>
               </div>
             ))}
-            <button 
+            <button
               type="button"
               onClick={() => {
-                const newExpedited = [...(formData?.expedited_min_deposit || []), { denom: "", amount: "" }];
-                updateField('expedited_min_deposit', newExpedited);
+                const newExpedited = [
+                  ...(formData?.expedited_min_deposit || []),
+                  { denom: "", amount: "" },
+                ];
+                updateField("expedited_min_deposit", newExpedited);
               }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -426,37 +502,39 @@ const GovV1ParameterInputsBase = (
         <label className="text-sm font-medium text-blue">Burn Settings</label>
         <div className="space-y-3 mt-2">
           <label className="flex items-center">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               name="burnVoteQuorum"
               checked={formData?.burnVoteQuorum || false}
-              onChange={(e) => updateField('burnVoteQuorum', e.target.checked)}
+              onChange={(e) => updateField("burnVoteQuorum", e.target.checked)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">
               Burn deposits if proposal doesn't meet quorum
             </span>
           </label>
-          
+
           <label className="flex items-center">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               name="burnProposalDepositPrevote"
               checked={formData?.burnProposalDepositPrevote || false}
-              onChange={(e) => updateField('burnProposalDepositPrevote', e.target.checked)}
+              onChange={(e) =>
+                updateField("burnProposalDepositPrevote", e.target.checked)
+              }
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">
               Burn deposits if proposal doesn't enter voting period
             </span>
           </label>
-          
+
           <label className="flex items-center">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               name="burnVoteVeto"
               checked={formData?.burnVoteVeto || false}
-              onChange={(e) => updateField('burnVoteVeto', e.target.checked)}
+              onChange={(e) => updateField("burnVoteVeto", e.target.checked)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">

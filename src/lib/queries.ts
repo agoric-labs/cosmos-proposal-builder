@@ -35,6 +35,37 @@ export const swingSetParamsQuery = (
   enabled: !!api,
 });
 
+//
+// Example module account query result:
+// {
+//   account: {
+//     "@type": "/cosmos.auth.v1beta1.ModuleAccount",
+//     base_account: {
+//       address: "agoric10d07y265gmmuvt4z0w9aw880jnsr700jgl36x9",
+//       pub_key: null,
+//       account_number: "5",
+//       sequence: "0",
+//     },
+//     name: "gov",
+//     permissions: ["burner"],
+//   },
+// };
+export const moduleAccountQuery = (
+  api: string | undefined,
+  moduleName: string | null,
+): UseQueryOptions<string, unknown> => ({
+  queryKey: ["moduleAccount", api, moduleName],
+  queryFn: async (): Promise<string> => {
+    const res = await fetch(
+      `${api}/cosmos/auth/v1beta1/module_accounts/${moduleName}`,
+    );
+    const data: { account: { base_account: { address: string } } } =
+      await res.json();
+    return data?.account?.base_account?.address;
+  },
+  enabled: !!api && !!moduleName,
+});
+
 export const accountBalancesQuery = (
   api: string | undefined,
   address: string | null,

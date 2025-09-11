@@ -4,7 +4,10 @@ import { Code } from "../../components/inline";
 import { BundleForm, BundleFormArgs } from "../../components/BundleForm";
 import { ProposalForm, ProposalArgs } from "../../components/ProposalForm";
 import { Tabs } from "../../components/Tabs";
-import { GovV1ParameterInputs, GovV1ParameterInputsMethods } from "../../components/GovV1ParameterInputs";
+import {
+  GovV1ParameterInputs,
+  GovV1ParameterInputsMethods,
+} from "../../components/GovV1ParameterInputs";
 import { useNetwork } from "../../hooks/useNetwork";
 import { useWallet } from "../../hooks/useWallet";
 import { compressBundle } from "../../lib/compression";
@@ -16,7 +19,7 @@ import {
   makeCommunityPoolSpendProposalMsg,
   makeGovV1ProposalMsg,
   makeMsgUpdateGovParams,
-  createGovV1UpdateParamsAny
+  createGovV1UpdateParamsAny,
 } from "../../lib/messageBuilder";
 import { isValidBundle } from "../../utils/validate";
 import { makeSignAndBroadcast } from "../../lib/signAndBroadcast";
@@ -26,6 +29,7 @@ import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
 
 import {
   accountBalancesQuery,
+  moduleAccountQuery,
   depositParamsQuery,
   votingParamsQuery,
 } from "../../lib/queries.ts";
@@ -60,6 +64,10 @@ const Agoric = () => {
       };
     },
   });
+
+  const { data: defaultAuthorityAddress } = useQuery(
+    moduleAccountQuery(api, "gov"),
+  );
 
   const signAndBroadcast = useMemo(
     () => makeSignAndBroadcast(stargateClient, walletAddress, netName),
@@ -149,19 +157,19 @@ const Agoric = () => {
   function handleGovV1ParameterChange() {
     return async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      
+
       if (!walletAddress) {
         toast.error("Wallet not connected.", { autoClose: 3000 });
         throw new Error("wallet not connected");
       }
 
       const formData = new FormData(event.target as HTMLFormElement);
-      
+
       // Extract Gov v1 form data
       const authority = formData.get("authority") as string;
       const title = formData.get("title") as string;
       const description = formData.get("description") as string;
-      
+
       if (!authority || !title || !description) {
         toast.error("Please fill in all required fields.", { autoClose: 3000 });
         return;
@@ -170,7 +178,10 @@ const Agoric = () => {
       // Get form data from the Gov v1 component using ref (following ParameterChangeForm pattern)
       const govV1FormData = govV1ParamsRef.current?.getFormData();
       if (!govV1FormData) {
-        toast.error("Gov v1 parameter data not available. Please ensure the form is loaded.", { autoClose: 3000 });
+        toast.error(
+          "Gov v1 parameter data not available. Please ensure the form is loaded.",
+          { autoClose: 3000 },
+        );
         return;
       }
 
@@ -197,11 +208,15 @@ const Agoric = () => {
         // 4. Submit
         await signAndBroadcast(proposalMsg, "proposal");
         proposalFormRef.current?.reset();
-        
-        toast.success("Gov v1 parameter change proposal submitted!", { autoClose: 5000 });
+
+        toast.success("Gov v1 parameter change proposal submitted!", {
+          autoClose: 5000,
+        });
       } catch (e) {
         console.error(e);
-        toast.error("Failed to submit proposal. Check console for details.", { autoClose: 5000 });
+        toast.error("Failed to submit proposal. Check console for details.", {
+          autoClose: 5000,
+        });
       }
     };
   }
@@ -386,15 +401,18 @@ const Agoric = () => {
                       Gov v1 Parameter Change Proposal
                     </h2>
                     <p className="mt-4 text-sm text-grey">
-                      This is a governance proposal to update governance module parameters using Gov v1. 
-                      This includes settings like voting periods, deposit requirements, and burn settings.
+                      This is a governance proposal to update governance module
+                      parameters using Gov v1. This includes settings like
+                      voting periods, deposit requirements, and burn settings.
                     </p>
 
                     <div className="mt-[30px] border-t border-dotted border-lightgrey py-[20px] sm:border-t sm:pb-0">
-                      
                       {/* Title and Description - moved to top */}
                       <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-1.5 sm:pb-6">
-                        <label htmlFor="title" className="block text-sm font-medium text-blue">
+                        <label
+                          htmlFor="title"
+                          className="block text-sm font-medium text-blue"
+                        >
                           Title
                         </label>
                         <div>
@@ -410,7 +428,10 @@ const Agoric = () => {
                       </div>
 
                       <div className="sm:grid sm:grid-cols-1 sm:items-start sm:gap-1.5 sm:pb-6">
-                        <label htmlFor="description" className="text-sm font-medium text-blue">
+                        <label
+                          htmlFor="description"
+                          className="text-sm font-medium text-blue"
+                        >
                           Description
                         </label>
                         <div>
@@ -426,7 +447,10 @@ const Agoric = () => {
                       </div>
 
                       {/* Gov v1 Parameters - moved below title/description */}
-                      <GovV1ParameterInputs ref={govV1ParamsRef} />
+                      <GovV1ParameterInputs
+                        defaultAuthorityAddress={defaultAuthorityAddress}
+                        ref={govV1ParamsRef}
+                      />
 
                       {/* Submit Button */}
                       <div className="pt-6">
@@ -439,7 +463,8 @@ const Agoric = () => {
                         </button>
                         {!canDeposit && (
                           <p className="mt-2 text-sm text-gray-600">
-                            Insufficient balance for proposal deposit: {renderCoins(minDeposit || [])}
+                            Insufficient balance for proposal deposit:{" "}
+                            {renderCoins(minDeposit || [])}
                           </p>
                         )}
                       </div>

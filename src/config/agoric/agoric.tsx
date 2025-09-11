@@ -4,7 +4,7 @@ import { Code } from "../../components/inline";
 import { BundleForm, BundleFormArgs } from "../../components/BundleForm";
 import { ProposalForm, ProposalArgs } from "../../components/ProposalForm";
 import { Tabs } from "../../components/Tabs";
-import { GovV1ParameterInputs } from "../../components/GovV1ParameterInputs";
+import { GovV1ParameterInputs, GovV1ParameterInputsMethods } from "../../components/GovV1ParameterInputs";
 import { useNetwork } from "../../hooks/useNetwork";
 import { useWallet } from "../../hooks/useWallet";
 import { compressBundle } from "../../lib/compression";
@@ -39,6 +39,7 @@ const Agoric = () => {
   const proposalFormRef = useRef<HTMLFormElement>(null);
   const corEvalFormRef = useRef<HTMLFormElement>(null);
   const bundleFormRef = useRef<HTMLFormElement>(null);
+  const govV1ParamsRef = useRef<GovV1ParameterInputsMethods>(null);
   const watchBundle = useWatchBundle(networkConfig?.rpc, {
     clipboard: window.navigator.clipboard,
   });
@@ -166,41 +167,12 @@ const Agoric = () => {
         return;
       }
 
-      // Extract ALL parameter data from form - validate all required fields
-      const maxDepositPeriod = formData.get("maxDepositPeriod") as string;
-      const votingPeriod = formData.get("votingPeriod") as string;
-      const quorum = formData.get("quorum") as string;
-      const threshold = formData.get("threshold") as string;
-      const vetoThreshold = formData.get("vetoThreshold") as string;
-      const minInitialDepositRatio = formData.get("minInitialDepositRatio") as string;
-      const min_deposit_ratio = formData.get("min_deposit_ratio") as string;
-      const proposal_cancel_ratio = formData.get("proposal_cancel_ratio") as string;
-      const expedited_voting_period = formData.get("expedited_voting_period") as string;
-      const expedited_threshold = formData.get("expedited_threshold") as string;
-
-      if (!maxDepositPeriod || !votingPeriod || !quorum || !threshold || !vetoThreshold || !minInitialDepositRatio || 
-          !min_deposit_ratio || !proposal_cancel_ratio || !expedited_voting_period || !expedited_threshold) {
-        toast.error("All parameter fields are required. Please ensure all fields are filled.", { autoClose: 3000 });
+      // Get form data from the Gov v1 component using ref (following ParameterChangeForm pattern)
+      const govV1FormData = govV1ParamsRef.current?.getFormData();
+      if (!govV1FormData) {
+        toast.error("Gov v1 parameter data not available. Please ensure the form is loaded.", { autoClose: 3000 });
         return;
       }
-
-      const govV1FormData = {
-        minDeposit: [{ denom: "ubld", amount: "1000000" }], // TODO: get from form's dynamic inputs
-        maxDepositPeriod,
-        votingPeriod,
-        quorum,
-        threshold,
-        vetoThreshold,
-        minInitialDepositRatio,
-        min_deposit_ratio,
-        proposal_cancel_ratio,
-        expedited_min_deposit: [{ denom: "stake", amount: "50000000" }], // TODO: get from form's dynamic inputs
-        expedited_threshold,
-        expedited_voting_period,
-        burnVoteQuorum: formData.get("burnVoteQuorum") === "on",
-        burnProposalDepositPrevote: formData.get("burnProposalDepositPrevote") === "on",
-        burnVoteVeto: formData.get("burnVoteVeto") === "on",
-      };
 
       try {
         // 1. Create MsgUpdateParams
@@ -454,7 +426,7 @@ const Agoric = () => {
                       </div>
 
                       {/* Gov v1 Parameters - moved below title/description */}
-                      <GovV1ParameterInputs />
+                      <GovV1ParameterInputs ref={govV1ParamsRef} />
 
                       {/* Submit Button */}
                       <div className="pt-6">

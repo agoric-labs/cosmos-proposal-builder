@@ -185,6 +185,16 @@ const Agoric = () => {
         return;
       }
 
+      if (govV1ParamsRef.current?.hasValidationErrors()) {
+        const errors = govV1ParamsRef.current.getValidationErrors();
+        const errorMessages = Object.entries(errors)
+          .filter(([_, error]) => error)
+          .map(([field, error]) => `${field}: ${error}`)
+          .join(', ');
+        toast.error(`Please fix validation errors: ${errorMessages}`, { autoClose: 5000 });
+        return;
+      }
+
       try {
         // 1. Create MsgUpdateParams
         const msgUpdateParams = makeMsgUpdateGovParams({

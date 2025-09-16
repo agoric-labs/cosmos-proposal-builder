@@ -5,10 +5,38 @@ import { govV1ParamsQuery } from "../lib/queries";
 import { selectGovV1Params } from "../lib/selectors";
 import type { GovV1ParamFormData } from "../types/gov";
 
+// Constants for 64-bit integer bounds for Duration.seconds
+// From the protobuf spec: Must be from -315,576,000,000 to +315,576,000,000 inclusive
+const MIN_DURATION_SECONDS = BigInt(-315576000000);
+const MAX_DURATION_SECONDS = BigInt(315576000000);
+
+// Validation function for duration values
+const validateDuration = (seconds: string): string | null => {
+  if (!seconds.trim()) return null; // Allow empty values
+  
+  try {
+    const secondsBigInt = BigInt(seconds);
+    
+    if (secondsBigInt < MIN_DURATION_SECONDS || secondsBigInt > MAX_DURATION_SECONDS) {
+      return `Duration must be between ${MIN_DURATION_SECONDS.toLocaleString()} and ${MAX_DURATION_SECONDS.toLocaleString()} seconds (protobuf 64-bit limit)`;
+    }
+    
+    if (secondsBigInt < BigInt(0)) {
+      return "Duration cannot be negative";
+    }
+    
+    return null; // Valid
+  } catch (error) {
+    return "Invalid number format";
+  }
+};
+
 // Interface for the ref methods
 export interface GovV1ParameterInputsMethods {
   getFormData: () => GovV1ParamFormData | null;
   reset: () => void;
+  hasValidationErrors: () => boolean;
+  getValidationErrors: () => Record<string, string>;
 }
 
 const GovV1ParameterInputsBase = (
@@ -24,6 +52,9 @@ const GovV1ParameterInputsBase = (
 
   // State for form data
   const [formData, setFormData] = useState<GovV1ParamFormData | null>(null);
+  
+  // State for validation errors
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Load current parameters into form when available
   useEffect(() => {
@@ -35,13 +66,38 @@ const GovV1ParameterInputsBase = (
   // Expose methods through ref
   useImperativeHandle(ref, () => ({
     getFormData: () => formData,
-    reset: () => setFormData(currentParams || null),
+    reset: () => {
+      setFormData(currentParams || null);
+      setValidationErrors({});
+    },
+    hasValidationErrors: () => Object.keys(validationErrors).some(key => validationErrors[key]),
+    getValidationErrors: () => validationErrors,
   }));
 
   // Helper to update form data
   const updateField = (field: keyof GovV1ParamFormData, value: any) => {
     if (!formData) return;
     setFormData({ ...formData, [field]: value });
+  };
+
+  // Helper to update duration fields with validation
+  const updateDurationField = (field: keyof GovV1ParamFormData, value: string) => {
+    if (!formData) return;
+    
+    // Update the form data
+    setFormData({ ...formData, [field]: value });
+    
+    // Validate the duration
+    const error = validateDuration(value);
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[field] = error;
+      } else {
+        delete newErrors[field];
+      }
+      return newErrors;
+    });
   };
 
   // Helper to update minDeposit array
@@ -212,11 +268,21 @@ const GovV1ParameterInputsBase = (
             name="maxDepositPeriod"
             id="maxDepositPeriod"
             value={formData?.maxDepositPeriod || ""}
-            onChange={(e) => updateField("maxDepositPeriod", e.target.value)}
-            className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
+            onChange={(e) => updateDurationField('maxDepositPeriod', e.target.value)}
+            className={`block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-1 focus:ring-inset ${
+              validationErrors.maxDepositPeriod 
+                ? 'ring-red-500 focus:ring-red-500' 
+                : 'ring-light focus:ring-red'
+            }`}
           />
+          {validationErrors.maxDepositPeriod && (
+            <p className="mt-1 text-xs text-red-600">
+              {validationErrors.maxDepositPeriod}
+            </p>
+          )}
           <p className="mt-1 text-xs leading-6 text-gray-600">
-            Time for deposits in seconds (e.g., 172800 = 48 hours)
+            Time for deposits in seconds (e.g., 172800 = 48 hours)<br/>
+            <span className="text-gray-500">Max: {MAX_DURATION_SECONDS.toLocaleString()} seconds (≈10,000 years)</span>
           </p>
         </div>
 
@@ -232,11 +298,21 @@ const GovV1ParameterInputsBase = (
             name="votingPeriod"
             id="votingPeriod"
             value={formData?.votingPeriod || ""}
-            onChange={(e) => updateField("votingPeriod", e.target.value)}
-            className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
+            onChange={(e) => updateDurationField('votingPeriod', e.target.value)}
+            className={`block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-1 focus:ring-inset ${
+              validationErrors.votingPeriod 
+                ? 'ring-red-500 focus:ring-red-500' 
+                : 'ring-light focus:ring-red'
+            }`}
           />
+          {validationErrors.votingPeriod && (
+            <p className="mt-1 text-xs text-red-600">
+              {validationErrors.votingPeriod}
+            </p>
+          )}
           <p className="mt-1 text-xs leading-6 text-gray-600">
-            Time for voting in seconds (e.g., 604800 = 7 days)
+            Time for voting in seconds (e.g., 604800 = 7 days)<br/>
+            <span className="text-gray-500">Max: {MAX_DURATION_SECONDS.toLocaleString()} seconds (≈10,000 years)</span>
           </p>
         </div>
       </div>
@@ -390,13 +466,23 @@ const GovV1ParameterInputsBase = (
               name="expedited_voting_period"
               id="expedited_voting_period"
               value={formData?.expedited_voting_period || ""}
-              onChange={(e) =>
-                updateField("expedited_voting_period", e.target.value)
-              }
+              onChange={(e) => updateDurationField('expedited_voting_period', e.target.value)}
               placeholder="86400"
-              className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-light placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-red"
+              className={`block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-1 focus:ring-inset ${
+                validationErrors.expedited_voting_period 
+                  ? 'ring-red-500 focus:ring-red-500' 
+                  : 'ring-light focus:ring-red'
+              }`}
             />
-            <p className="mt-1 text-xs text-gray-600">86400 = 24 hours</p>
+            {validationErrors.expedited_voting_period && (
+              <p className="mt-1 text-xs text-red-600">
+                {validationErrors.expedited_voting_period}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-600">
+              86400 = 24 hours<br/>
+              <span className="text-gray-500">Max: {MAX_DURATION_SECONDS.toLocaleString()} seconds (≈10,000 years)</span>
+            </p>
           </div>
 
           <div>

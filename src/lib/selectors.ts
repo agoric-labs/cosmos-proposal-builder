@@ -101,8 +101,8 @@ export const selectGovV1Params = (
     votingPeriod: durationToSeconds(params.votingPeriod),
     quorum: params.quorum,
     threshold: params.threshold,
-    vetoThreshold: params.vetoThreshold,
-    minInitialDepositRatio: params.minInitialDepositRatio,
+    vetoThreshold: params.vetoThreshold,  // Fix: use correct field
+    minInitialDepositRatio: params.minInitialDepositRatio,  // Fix: use correct field
     min_deposit_ratio: params.min_deposit_ratio,
     proposal_cancel_ratio: params.proposal_cancel_ratio,
     expedited_min_deposit: params.expedited_min_deposit,

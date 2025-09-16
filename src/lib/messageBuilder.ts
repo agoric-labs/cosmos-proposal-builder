@@ -11,7 +11,7 @@ import type { ParamChange } from "cosmjs-types/cosmos/params/v1beta1/params";
 import { CommunityPoolSpendProposal } from "cosmjs-types/cosmos/distribution/v1beta1/distribution";
 import { Params as CosmjsGovV1Params } from "cosmjs-types/cosmos/gov/v1/gov";
 import { MsgUpdateParams as MsgUpdateGovParamsV1, MsgSubmitProposal } from "cosmjs-types/cosmos/gov/v1/tx";
-import Long from "long";
+import { Long } from "cosmjs-types/helpers";
 
 export const registry = new Registry([
   ...defaultRegistryTypes,
@@ -202,11 +202,25 @@ export const makeGovV1ProposalMsg = ({
   }),
 });
 
-// Helper to convert seconds string to Duration with Long
-const secondsToDuration = (seconds: string) => ({
-  seconds: Long.fromString(seconds),
-  nanos: 0,
-});
+// Constants for 64-bit integer bounds for Duration.seconds
+// From the protobuf spec: Must be from -315,576,000,000 to +315,576,000,000 inclusive
+const MIN_DURATION_SECONDS = BigInt(-315576000000);
+const MAX_DURATION_SECONDS = BigInt(315576000000);
+
+const secondsToDuration = (seconds: string) => {
+  const secondsBigInt = BigInt(seconds);
+  
+  if (secondsBigInt < MIN_DURATION_SECONDS || secondsBigInt > MAX_DURATION_SECONDS) {
+    throw new Error(
+      `Duration seconds value ${seconds} is out of bounds. Must be between ${MIN_DURATION_SECONDS} and ${MAX_DURATION_SECONDS}`
+    );
+  }
+  
+  return {
+    seconds: Long.fromString(seconds),
+    nanos: 0,
+  };
+};
 
 // Create MsgUpdateParams for Gov v1 parameter changes with proper Duration conversion
 export const makeMsgUpdateGovParams = ({

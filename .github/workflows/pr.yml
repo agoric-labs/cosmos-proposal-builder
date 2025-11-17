@@ -13,6 +13,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.8.x'
+      - name: corepack enable
+        run: corepack enable
       - name: yarn install
         run: yarn install
       - name: yarn build
@@ -38,6 +40,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.8.x'
+      - name: corepack enable
+        run: corepack enable
       - name: yarn install
         run: yarn install
       - name: Wait for Docker container to be ready

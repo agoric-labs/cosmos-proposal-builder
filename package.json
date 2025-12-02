@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@agoric/casting": "^0.4.3-u13.0",
-    "@agoric/cosmic-proto": "dev",
+    "@agoric/cosmic-proto": "0.4.1-other-dev-d15096d.0.d15096d",
     "@agoric/eventual-send": "^0.14.1",
     "@agoric/notifier": "^0.6.2",
     "@agoric/store": "^0.9.2",

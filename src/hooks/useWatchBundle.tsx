@@ -24,7 +24,7 @@ export const useWatchBundle = (
 
   const watchBundle = async (
     expectedEndoZipBase64Sha512: string,
-    { height }: { height: number },
+    height: number,
   ) => {
     if (!leader) throw Error("Unexpected error: leader not found.");
     const castingSpec = makeCastingSpec(":bundles");

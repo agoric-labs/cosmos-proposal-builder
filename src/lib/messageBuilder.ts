@@ -1,5 +1,11 @@
-import { CoreEvalProposal } from "@agoric/cosmic-proto/swingset/swingset.js";
-import { MsgInstallBundle } from "@agoric/cosmic-proto/swingset/msgs.js";
+import {
+  CoreEvalProposal,
+  ChunkedArtifact,
+} from "@agoric/cosmic-proto/swingset/swingset.js";
+import {
+  MsgInstallBundle,
+  MsgSendChunk,
+} from "@agoric/cosmic-proto/swingset/msgs.js";
 import { StdFee } from "@cosmjs/amino";
 import { fromBech32 } from "@cosmjs/encoding";
 import { coins, Registry } from "@cosmjs/proto-signing";
@@ -13,6 +19,7 @@ import { CommunityPoolSpendProposal } from "cosmjs-types/cosmos/distribution/v1b
 export const registry = new Registry([
   ...defaultRegistryTypes,
   ["/agoric.swingset.MsgInstallBundle", MsgInstallBundle],
+  ["/agoric.swingset.MsgSendChunk", MsgSendChunk],
 ]);
 
 export const makeCommunityPoolSpendProposalMsg = ({
@@ -148,20 +155,45 @@ export const makeParamChangeProposalMsg = ({
 });
 
 export interface MsgInstallArgs {
-  compressedBundle: Uint8Array;
   uncompressedSize: string;
+  compressedBundle?: Uint8Array;
+  chunkedArtifact?: ChunkedArtifact;
   submitter: string;
 }
 
 export const makeInstallBundleMsg = ({
   compressedBundle,
   uncompressedSize,
+  chunkedArtifact,
   submitter,
 }: MsgInstallArgs) => ({
   typeUrl: "/agoric.swingset.MsgInstallBundle",
   value: {
     compressedBundle,
     uncompressedSize,
+    chunkedArtifact,
+    submitter: fromBech32(submitter).data,
+  },
+});
+
+export interface MsgSendChunkArgs {
+  chunkedArtifactId: bigint;
+  chunkIndex: bigint;
+  chunkData: Uint8Array;
+  submitter: string;
+}
+
+export const makeSendChunkMsg = ({
+  chunkedArtifactId,
+  chunkIndex,
+  chunkData,
+  submitter,
+}: MsgSendChunkArgs) => ({
+  typeUrl: "/agoric.swingset.MsgSendChunk",
+  value: {
+    chunkedArtifactId,
+    chunkIndex,
+    chunkData,
     submitter: fromBech32(submitter).data,
   },
 });

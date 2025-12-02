@@ -1,20 +1,24 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { toHex } from "@cosmjs/encoding";
+// TODO move into src/lib/something.ts
+import { MsgInstallBundleResponse } from "@agoric/cosmic-proto/swingset/msgs.js";
+import { ChunkInfo } from "@agoric/cosmic-proto/swingset/swingset.js";
 import { Code } from "../../components/inline";
 import { BundleForm, BundleFormArgs } from "../../components/BundleForm";
 import { ProposalForm, ProposalArgs } from "../../components/ProposalForm";
 import { Tabs } from "../../components/Tabs";
 import { useNetwork } from "../../hooks/useNetwork";
 import { useWallet } from "../../hooks/useWallet";
-import { compressBundle } from "../../lib/compression";
+import { gzip } from "../../lib/compression";
 import {
   makeCoreEvalProposalMsg,
   makeTextProposalMsg,
   makeInstallBundleMsg,
+  makeSendChunkMsg,
   makeParamChangeProposalMsg,
   makeCommunityPoolSpendProposalMsg,
 } from "../../lib/messageBuilder";
-import { isValidBundle } from "../../utils/validate";
 import { makeSignAndBroadcast } from "../../lib/signAndBroadcast";
 import { useWatchBundle } from "../../hooks/useWatchBundle";
 import { coinIsGTE, renderCoins } from "../../utils/coin.ts";
@@ -24,9 +28,65 @@ import {
   accountBalancesQuery,
   depositParamsQuery,
   votingParamsQuery,
+  swingSetParamsQuery,
 } from "../../lib/queries.ts";
 import { selectCoinBalance } from "../../lib/selectors.ts";
 import { DepositParams, VotingParams } from "../../types/gov.ts";
+
+const textEncoder = new TextEncoder();
+
+const locale = "en";
+
+const { format: formatBytesQuantity } = new Intl.NumberFormat(locale, {
+  notation: "compact",
+  style: "unit",
+  unit: "byte",
+});
+const { format: formatPercent } = new Intl.NumberFormat(locale, {
+  style: "percent",
+  // @ts-expect-error Until the web platform types catch up.
+  maximimumFractionDigits: 0,
+});
+const pluralRules = new Intl.PluralRules(locale);
+const pluralizeEn = (count: number, singular: string, plural: string) => {
+  const category = pluralRules.select(count);
+  return category === "one" ? `${count} ${singular}` : `${count} ${plural}`;
+};
+
+const getSha512Hex = async (bytes: Uint8Array) => {
+  const sha512Bytes = await crypto.subtle.digest("sha-512", bytes);
+  return toHex(new Uint8Array(sha512Bytes));
+};
+
+const chunkBundle = async (bytes: Uint8Array, chunkSizeLimit: number) => {
+  const bundleSha512Hex = await getSha512Hex(bytes);
+
+  // Generate parallel arrays of the chunks and the chunk infos.
+  const chunks: Uint8Array[] = [];
+  const info: ChunkInfo[] = [];
+  for (let i = 0; i < bytes.byteLength; i += chunkSizeLimit) {
+    const chunk = bytes.subarray(
+      i,
+      Math.min(bytes.byteLength, i + chunkSizeLimit),
+    );
+    const chunkSha512Hex = await getSha512Hex(chunk);
+    chunks.push(chunk);
+    info.push({
+      sha512: chunkSha512Hex,
+      sizeBytes: BigInt(chunk.byteLength),
+      state: 0,
+    });
+  }
+
+  return {
+    chunks,
+    manifest: {
+      sha512: bundleSha512Hex,
+      sizeBytes: BigInt(bytes.byteLength),
+      chunks: info,
+    },
+  };
+};
 
 const Agoric = () => {
   const { netName, networkConfig } = useNetwork();
@@ -38,6 +98,18 @@ const Agoric = () => {
   const watchBundle = useWatchBundle(networkConfig?.rpc, {
     clipboard: window.navigator.clipboard,
   });
+
+  const swingSetParams = useQuery(swingSetParamsQuery(api));
+  const chunkSizeLimit = (({ isLoading, data }) => {
+    if (isLoading || !data) {
+      return Infinity;
+    }
+    const { chunk_size_limit_bytes = "" } = data;
+    if (chunk_size_limit_bytes === "") {
+      return Infinity;
+    }
+    return Number(chunk_size_limit_bytes);
+  })(swingSetParams ?? { isLoading: false });
 
   const accountBalances = useQuery(accountBalancesQuery(api, walletAddress));
   const { minDeposit } = useQueries({
@@ -61,33 +133,187 @@ const Agoric = () => {
     [stargateClient, walletAddress, netName],
   );
 
-  async function handleBundle(vals: BundleFormArgs) {
-    if (!walletAddress) {
-      toast.error("Wallet not connected.", { autoClose: 3000 });
-      throw new Error("wallet not connected");
-    }
-    if (!isValidBundle(vals.bundle)) {
-      toast.error("Invalid bundle format.", { autoClose: 3000 });
-      throw new Error("Invalid bundle.");
-    }
-    const { compressedBundle, uncompressedSize } = await compressBundle(
-      JSON.parse(vals.bundle),
-    );
-    const proposalMsg = makeInstallBundleMsg({
-      compressedBundle,
-      uncompressedSize,
-      submitter: walletAddress,
-    });
+  const validateBundle = (bundleString: string) => {
+    let bundleObject;
     try {
-      const txResponse = await signAndBroadcast(proposalMsg, "bundle");
-      if (txResponse) {
-        const { endoZipBase64Sha512 } = JSON.parse(vals.bundle);
-        await watchBundle(endoZipBase64Sha512, txResponse);
-        bundleFormRef.current?.reset();
-      }
-    } catch (e) {
-      console.error(e);
+      bundleObject = JSON.parse(bundleString);
+    } catch (error) {
+      throw new Error(
+        // @ts-expect-error parse errors are in fact always Errors.
+        `The submitted file is not in the expected format, not parsable as JSON: ${error.message}`,
+      );
     }
+    const { moduleFormat, endoZipBase64, endoZipBase64Sha512 } = bundleObject;
+    if (moduleFormat !== "endoZipBase64") {
+      throw new Error(
+        `The submitted file does not have the expected moduleFormat value of endoZipBase64, got: ${moduleFormat}`,
+      );
+    }
+    if (typeof endoZipBase64 !== "string") {
+      throw new Error(
+        `The submitted file does not have the expected endoZipBase64 property`,
+      );
+    }
+    if (typeof endoZipBase64Sha512 !== "string") {
+      throw new Error(
+        `The submitted file does not have the expected endoZipBase64Sha512 property`,
+      );
+    }
+    // Could go on to verify many other details, down to running checkBundle
+    // locally, but our duty here is to catch silly errors like submitting
+    // package.json.
+    // Once submitted, the chain will perform a full verification down to every
+    // leaf of the schema as well as integrity checks for all files by their
+    // alleged SHA-512.
+    return bundleObject;
+  };
+
+  async function handleBundle(args: BundleFormArgs) {
+    await null;
+    try {
+      return await fallibleHandleBundle(args);
+    } catch (unknownError) {
+      const error = unknownError as Error & { autoCloseToast?: number };
+      toast.error(error.message, { autoClose: error.autoCloseToast });
+    }
+  }
+
+  async function fallibleHandleBundle(args: BundleFormArgs) {
+    // Must be captured here to narrow optionality of walletAddress.
+    if (!walletAddress) {
+      throw Object.assign(new Error("wallet not connected"), {
+        autoCloseToast: 3000,
+      });
+    }
+
+    const bundleString: string = args.bundle;
+    const bundleObject = validateBundle(bundleString);
+    const { endoZipBase64Sha512 } = bundleObject;
+    const uncompressedBundleBytes = textEncoder.encode(bundleString);
+    const compressedBundleBytes = await gzip(uncompressedBundleBytes);
+    const compressedSize = compressedBundleBytes.byteLength;
+    const uncompressedSize = uncompressedBundleBytes.byteLength;
+    const compressionSavings = compressedSize / uncompressedSize - 1;
+    const txInfo = [
+      `${formatBytesQuantity(uncompressedSize)} uncompressed`,
+      `${formatBytesQuantity(compressedSize)} (${formatPercent(
+        compressionSavings,
+      )}) compressed`,
+    ];
+
+    let blockHeight: number | undefined;
+
+    if (bundleString.length <= chunkSizeLimit) {
+      const txSummary = "Submitting bundle in one transaction";
+      toast.info([txSummary, ...txInfo].join(", "));
+
+      const proposalMsg = makeInstallBundleMsg({
+        compressedBundle: compressedBundleBytes,
+        uncompressedSize: String(uncompressedSize),
+        submitter: walletAddress,
+      });
+      try {
+        const txResponse = await signAndBroadcast(proposalMsg, "bundle");
+        if (!txResponse) {
+          throw new Error("no response for bundle");
+        }
+        blockHeight = txResponse.height;
+      } catch (error) {
+        throw new Error(
+          // @ts-expect-error it will be an Error, but null?.message would be fine anyway.
+          `Transaction failed to submit bundle to chain: ${error?.message}`,
+        );
+      }
+    } else {
+      const { chunks, manifest } = await chunkBundle(
+        compressedBundleBytes,
+        chunkSizeLimit,
+      );
+
+      const txCount = chunks.length + 1;
+      const txEn = pluralizeEn(txCount, "transaction", "transactions");
+      const chunkEn = pluralizeEn(chunks.length, "chunk", "chunks");
+      const txSummary = `Submitting bundle in ${txCount} ${txEn} (1 manifest and ${chunks.length} ${chunkEn})`;
+      toast.info([txSummary, ...txInfo].join(", "));
+
+      const proposalMsg = makeInstallBundleMsg({
+        uncompressedSize: String(uncompressedSize),
+        submitter: walletAddress,
+        chunkedArtifact: manifest,
+      });
+      let chunkedArtifactId;
+      try {
+        const txResponse = await signAndBroadcast(proposalMsg, "bundle");
+        if (!txResponse) {
+          throw new Error(
+            `No transaction response for attempt to submit manifest for bundle ${endoZipBase64Sha512}`,
+          );
+        }
+        blockHeight = txResponse.height;
+        const installBundleResponse = txResponse.msgResponses.find(
+          (response) =>
+            response.typeUrl === "/agoric.swingset.MsgInstallBundleResponse",
+        );
+        if (!installBundleResponse) {
+          throw new Error(
+            `No install bundle response found in manifest submission transaction response for bundle ${endoZipBase64Sha512}. This is a software defect. Please report.`,
+          );
+        }
+        ({ chunkedArtifactId } = MsgInstallBundleResponse.decode(
+          installBundleResponse.value,
+        ));
+        if (chunkedArtifactId === undefined) {
+          throw new Error(
+            `No chunked artifact identifier found in manifest submission transaction response for bundle ${endoZipBase64Sha512}. This is a software defect. Please report.`,
+          );
+        }
+      } catch (error) {
+        throw new Error(
+          // @ts-expect-error error is going to be an Error, pinky swear.
+          `Transaction failed to submit bundle manifest to chain for bundle ${endoZipBase64Sha512}: ${error?.message}`,
+        );
+      }
+
+      if (chunkedArtifactId === undefined) {
+        throw new Error(
+          `No chunked artifact identifier found in transaction response. This is a software defect. Please report.`,
+        );
+      }
+
+      for (let i = 0; i < chunks.length; i += 1) {
+        const chunk = chunks[i];
+        const proposalMsg = makeSendChunkMsg({
+          chunkedArtifactId,
+          chunkIndex: BigInt(i),
+          chunkData: chunk,
+          submitter: walletAddress,
+        });
+        try {
+          const txResponse = await signAndBroadcast(
+            proposalMsg,
+            "bundle-chunk",
+          );
+          if (!txResponse) {
+            throw new Error("no transaction response");
+          }
+          blockHeight = txResponse.height;
+        } catch (error) {
+          throw new Error(
+            // @ts-expect-error error will truly be an Error, but ?. can handle it if it's not.
+            `Transaction failed to submit bundle chunk ${i} of bundle ${endoZipBase64Sha512} to chain: ${error?.message}`,
+          );
+        }
+      }
+    }
+
+    if (blockHeight === undefined) {
+      throw new Error(
+        "Bundle submitted but transaction response did not provide a block height. This should not occur. Please report.",
+      );
+    }
+
+    await watchBundle(endoZipBase64Sha512, blockHeight);
+    bundleFormRef.current?.reset();
   }
 
   function handleProposal(msgType: QueryParams["msgType"]) {

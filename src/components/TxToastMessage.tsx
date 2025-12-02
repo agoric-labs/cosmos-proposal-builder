@@ -15,7 +15,7 @@ export function TxToastMessage({
   resp: DeliverTxResponse;
   netName: NetName;
   closeToast: () => void;
-  type: "bundle" | "proposal";
+  type: "bundle" | "bundle-chunk" | "proposal";
 }) {
   const { proposalId, transactionHash } = parseProposal(resp);
   const txUrl = getTxUrl(netName, transactionHash);
@@ -64,7 +64,9 @@ export function TxToastMessage({
         <p className="text-sm font-medium text-gray-900">
           {type === "proposal"
             ? `Proposal ${proposalId} Submitted!`
-            : "Bundle Submitted!"}
+            : type === "bundle-chunk"
+              ? "Bundle Chunk Submitted!"
+              : "Bundle Submitted!"}
         </p>
         <span className="mt-1 text-sm text-gray-500">
           {txString} {voteString}

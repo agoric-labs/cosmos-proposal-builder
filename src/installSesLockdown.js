@@ -8,6 +8,7 @@ lockdown({
   errorTaming: "unsafe",
   overrideTaming: "severe",
   consoleTaming,
+  errorTrapping: "none",
 });
 
 Error.stackTraceLimit = Infinity;

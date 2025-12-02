@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "@agoric/casting": "^0.4.3-u13.0",
-    "@agoric/cosmic-proto": "dev",
+    "@agoric/cosmic-proto": "0.4.1-other-dev-d15096d.0.d15096d",
     "@agoric/eventual-send": "^0.14.1",
     "@agoric/notifier": "^0.6.2",
     "@agoric/store": "^0.9.2",
     "@agoric/ui-components": "^0.8.0",
-    "@cosmjs/stargate": "^0.31.1",
+    "@cosmjs/stargate": "^0.36.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@paralleldrive/cuid2": "^2.2.2",
@@ -58,7 +58,7 @@
     "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react": "^4.1.0",
     "@vitest/coverage-v8": "^0.34.6",
-    "cosmjs-types": "^0.8.0",
+    "cosmjs-types": "^0.10.1",
     "eslint": "^8.45.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.2",
@@ -75,11 +75,14 @@
     "vitest": "^0.34.6"
   },
   "resolutions": {
-    "@cosmjs/encoding": "0.31.1",
-    "@cosmjs/proto-signing": "0.31.1",
-    "@cosmjs/stargate": "0.31.1",
-    "@cosmjs/tendermint-rpc": "0.31.1",
+    "@cosmjs/amino": "^0.36.0",
+    "@cosmjs/encoding": "npm:^0.36.0",
+    "@cosmjs/math": "npm:^0.36.0",
+    "@cosmjs/proto-signing": "npm:^0.36.0",
+    "@cosmjs/stargate": "npm:^0.36.0",
+    "@cosmjs/tendermint-rpc": "npm:^0.36.0",
+    "cosmjs-types": "npm:^0.10.1",
     "ses": "1.3.0"
   },
-  "packageManager": "yarn@1.22.19+sha256.732620bac8b1690d507274f025f3c6cfdc3627a84d9642e38a07452cc00e0f2e"
+  "packageManager": "yarn@4.9.3"
 }

@@ -84,7 +84,7 @@
     "cosmjs-types": "npm:^0.10.1",
     "ses": "1.3.0"
   },
-  "packageManager": "yarn@4.9.3",
+  "packageManager": "yarn@4.12.0",
   "engines": {
     "node": ">=22 <23"
   }

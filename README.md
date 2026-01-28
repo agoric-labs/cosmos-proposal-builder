@@ -9,7 +9,7 @@ The software is provided "as is", without warranty of any kind, express or impli
 ## Getting Started
 
 - Node v22.x (LTS Jod)
-- Yarn v1.22.x
+- Yarn v4.12.0
 - Keplr Wallet
 
 ```bash

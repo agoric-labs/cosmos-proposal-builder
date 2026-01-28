@@ -1,9 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { toHex } from "@cosmjs/encoding";
-// TODO move into src/lib/something.ts
-import { MsgInstallBundleResponse } from "@agoric/cosmic-proto/swingset/msgs.js";
-import { ChunkInfo } from "@agoric/cosmic-proto/swingset/swingset.js";
 import { Code } from "../../components/inline";
 import { BundleForm, BundleFormArgs } from "../../components/BundleForm";
 import { ProposalForm, ProposalArgs } from "../../components/ProposalForm";
@@ -23,6 +19,7 @@ import { makeSignAndBroadcast } from "../../lib/signAndBroadcast";
 import { useWatchBundle } from "../../hooks/useWatchBundle";
 import { coinIsGTE, renderCoins } from "../../utils/coin.ts";
 import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
+import { installBundle } from "../../installBundle";
 
 import {
   accountBalancesQuery,
@@ -32,8 +29,6 @@ import {
 } from "../../lib/queries.ts";
 import { selectCoinBalance } from "../../lib/selectors.ts";
 import { DepositParams, VotingParams } from "../../types/gov.ts";
-
-const textEncoder = new TextEncoder();
 
 const locale = "en";
 
@@ -51,41 +46,6 @@ const pluralRules = new Intl.PluralRules(locale);
 const pluralizeEn = (count: number, singular: string, plural: string) => {
   const category = pluralRules.select(count);
   return category === "one" ? `${count} ${singular}` : `${count} ${plural}`;
-};
-
-const getSha512Hex = async (bytes: Uint8Array) => {
-  const sha512Bytes = await crypto.subtle.digest("sha-512", bytes);
-  return toHex(new Uint8Array(sha512Bytes));
-};
-
-const chunkBundle = async (bytes: Uint8Array, chunkSizeLimit: number) => {
-  const bundleSha512Hex = await getSha512Hex(bytes);
-
-  // Generate parallel arrays of the chunks and the chunk infos.
-  const chunks: Uint8Array[] = [];
-  const info: ChunkInfo[] = [];
-  for (let i = 0; i < bytes.byteLength; i += chunkSizeLimit) {
-    const chunk = bytes.subarray(
-      i,
-      Math.min(bytes.byteLength, i + chunkSizeLimit),
-    );
-    const chunkSha512Hex = await getSha512Hex(chunk);
-    chunks.push(chunk);
-    info.push({
-      sha512: chunkSha512Hex,
-      sizeBytes: BigInt(chunk.byteLength),
-      state: 0,
-    });
-  }
-
-  return {
-    chunks,
-    manifest: {
-      sha512: bundleSha512Hex,
-      sizeBytes: BigInt(bytes.byteLength),
-      chunks: info,
-    },
-  };
 };
 
 const Agoric = () => {
@@ -133,41 +93,6 @@ const Agoric = () => {
     [stargateClient, walletAddress, netName],
   );
 
-  const validateBundle = (bundleString: string) => {
-    let bundleObject;
-    try {
-      bundleObject = JSON.parse(bundleString);
-    } catch (error) {
-      throw new Error(
-        // @ts-expect-error parse errors are in fact always Errors.
-        `The submitted file is not in the expected format, not parsable as JSON: ${error.message}`,
-      );
-    }
-    const { moduleFormat, endoZipBase64, endoZipBase64Sha512 } = bundleObject;
-    if (moduleFormat !== "endoZipBase64") {
-      throw new Error(
-        `The submitted file does not have the expected moduleFormat value of endoZipBase64, got: ${moduleFormat}`,
-      );
-    }
-    if (typeof endoZipBase64 !== "string") {
-      throw new Error(
-        `The submitted file does not have the expected endoZipBase64 property`,
-      );
-    }
-    if (typeof endoZipBase64Sha512 !== "string") {
-      throw new Error(
-        `The submitted file does not have the expected endoZipBase64Sha512 property`,
-      );
-    }
-    // Could go on to verify many other details, down to running checkBundle
-    // locally, but our duty here is to catch silly errors like submitting
-    // package.json.
-    // Once submitted, the chain will perform a full verification down to every
-    // leaf of the schema as well as integrity checks for all files by their
-    // alleged SHA-512.
-    return bundleObject;
-  };
-
   async function handleBundle(args: BundleFormArgs) {
     await null;
     try {
@@ -187,132 +112,39 @@ const Agoric = () => {
     }
 
     const bundleString: string = args.bundle;
-    const bundleObject = validateBundle(bundleString);
-    const { endoZipBase64Sha512 } = bundleObject;
-    const uncompressedBundleBytes = textEncoder.encode(bundleString);
-    const compressedBundleBytes = await gzip(uncompressedBundleBytes);
-    const compressedSize = compressedBundleBytes.byteLength;
-    const uncompressedSize = uncompressedBundleBytes.byteLength;
-    const compressionSavings = compressedSize / uncompressedSize - 1;
-    const txInfo = [
-      `${formatBytesQuantity(uncompressedSize)} uncompressed`,
-      `${formatBytesQuantity(compressedSize)} (${formatPercent(
-        compressionSavings,
-      )}) compressed`,
-    ];
 
-    let blockHeight: number | undefined;
-
-    if (bundleString.length <= chunkSizeLimit) {
-      const txSummary = "Submitting bundle in one transaction";
-      toast.info([txSummary, ...txInfo].join(", "));
-
-      const proposalMsg = makeInstallBundleMsg({
-        compressedBundle: compressedBundleBytes,
-        uncompressedSize: String(uncompressedSize),
-        submitter: walletAddress,
-      });
-      try {
-        const txResponse = await signAndBroadcast(proposalMsg, "bundle");
-        if (!txResponse) {
-          throw new Error("no response for bundle");
+    await installBundle({
+      bundleJson: bundleString,
+      chunkSizeLimit,
+      submitter: walletAddress,
+      gzip,
+      makeInstallBundleMsg,
+      makeSendChunkMsg,
+      signAndBroadcast,
+      watchBundle,
+      onProgress: (event) => {
+        if (event.type !== "preflight") return;
+        const compressionSavings =
+          event.compressedSize / event.uncompressedSize - 1;
+        const txInfo = [
+          `${formatBytesQuantity(event.uncompressedSize)} uncompressed`,
+          `${formatBytesQuantity(event.compressedSize)} (${formatPercent(
+            compressionSavings,
+          )}) compressed`,
+        ];
+        if (!event.chunked) {
+          const txSummary = "Submitting bundle in one transaction";
+          toast.info([txSummary, ...txInfo].join(", "));
+          return;
         }
-        blockHeight = txResponse.height;
-      } catch (error) {
-        throw new Error(
-          // @ts-expect-error it will be an Error, but null?.message would be fine anyway.
-          `Transaction failed to submit bundle to chain: ${error?.message}`,
-        );
-      }
-    } else {
-      const { chunks, manifest } = await chunkBundle(
-        compressedBundleBytes,
-        chunkSizeLimit,
-      );
-
-      const txCount = chunks.length + 1;
-      const txEn = pluralizeEn(txCount, "transaction", "transactions");
-      const chunkEn = pluralizeEn(chunks.length, "chunk", "chunks");
-      const txSummary = `Submitting bundle in ${txCount} ${txEn} (1 manifest and ${chunks.length} ${chunkEn})`;
-      toast.info([txSummary, ...txInfo].join(", "));
-
-      const proposalMsg = makeInstallBundleMsg({
-        uncompressedSize: String(uncompressedSize),
-        submitter: walletAddress,
-        chunkedArtifact: manifest,
-      });
-      let chunkedArtifactId;
-      try {
-        const txResponse = await signAndBroadcast(proposalMsg, "bundle");
-        if (!txResponse) {
-          throw new Error(
-            `No transaction response for attempt to submit manifest for bundle ${endoZipBase64Sha512}`,
-          );
-        }
-        blockHeight = txResponse.height;
-        const installBundleResponse = txResponse.msgResponses.find(
-          (response) =>
-            response.typeUrl === "/agoric.swingset.MsgInstallBundleResponse",
-        );
-        if (!installBundleResponse) {
-          throw new Error(
-            `No install bundle response found in manifest submission transaction response for bundle ${endoZipBase64Sha512}. This is a software defect. Please report.`,
-          );
-        }
-        ({ chunkedArtifactId } = MsgInstallBundleResponse.decode(
-          installBundleResponse.value,
-        ));
-        if (chunkedArtifactId === undefined) {
-          throw new Error(
-            `No chunked artifact identifier found in manifest submission transaction response for bundle ${endoZipBase64Sha512}. This is a software defect. Please report.`,
-          );
-        }
-      } catch (error) {
-        throw new Error(
-          // @ts-expect-error error is going to be an Error, pinky swear.
-          `Transaction failed to submit bundle manifest to chain for bundle ${endoZipBase64Sha512}: ${error?.message}`,
-        );
-      }
-
-      if (chunkedArtifactId === undefined) {
-        throw new Error(
-          `No chunked artifact identifier found in transaction response. This is a software defect. Please report.`,
-        );
-      }
-
-      for (let i = 0; i < chunks.length; i += 1) {
-        const chunk = chunks[i];
-        const proposalMsg = makeSendChunkMsg({
-          chunkedArtifactId,
-          chunkIndex: BigInt(i),
-          chunkData: chunk,
-          submitter: walletAddress,
-        });
-        try {
-          const txResponse = await signAndBroadcast(
-            proposalMsg,
-            "bundle-chunk",
-          );
-          if (!txResponse) {
-            throw new Error("no transaction response");
-          }
-          blockHeight = txResponse.height;
-        } catch (error) {
-          throw new Error(
-            // @ts-expect-error error will truly be an Error, but ?. can handle it if it's not.
-            `Transaction failed to submit bundle chunk ${i} of bundle ${endoZipBase64Sha512} to chain: ${error?.message}`,
-          );
-        }
-      }
-    }
-
-    if (blockHeight === undefined) {
-      throw new Error(
-        "Bundle submitted but transaction response did not provide a block height. This should not occur. Please report.",
-      );
-    }
-
-    await watchBundle(endoZipBase64Sha512, blockHeight);
+        const chunkCount = event.chunkCount ?? 0;
+        const txCount = chunkCount + 1;
+        const txEn = pluralizeEn(txCount, "transaction", "transactions");
+        const chunkEn = pluralizeEn(chunkCount, "chunk", "chunks");
+        const txSummary = `Submitting bundle in ${txCount} ${txEn} (1 manifest and ${chunkCount} ${chunkEn})`;
+        toast.info([txSummary, ...txInfo].join(", "));
+      },
+    });
     bundleFormRef.current?.reset();
   }
 

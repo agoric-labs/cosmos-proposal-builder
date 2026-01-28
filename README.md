@@ -8,7 +8,7 @@ The software is provided "as is", without warranty of any kind, express or impli
 
 ## Getting Started
 
-- Node v18.x
+- Node v22.x (LTS Jod)
 - Yarn v1.22.x
 - Keplr Wallet
 

@@ -1,12 +1,27 @@
 interface FooterProps {
-  links: {
+  links?: {
     name: string;
     href: string;
   }[];
   text?: string;
 }
 
-const Footer = ({ text, links }: FooterProps) => {
+const defaultLinks = [
+  {
+    name: "View Source",
+    href: "https://github.com/DCFoundation/cosmos-proposal-builder",
+  },
+  {
+    name: "Request a Feature",
+    href: "https://github.com/DCFoundation/cosmos-proposal-builder/issues/new?template=feature_request.md&labels=enhancement",
+  },
+  {
+    name: "Report a Bug",
+    href: "https://github.com/DCFoundation/cosmos-proposal-builder/issues/new?template=bug_report.md&labels=bug",
+  },
+];
+
+const Footer = ({ text, links = defaultLinks }: FooterProps) => {
   return (
     <div>
       <div className="">
@@ -31,24 +46,6 @@ const Footer = ({ text, links }: FooterProps) => {
       </div>
     </div>
   );
-};
-
-Footer.defaultProps = {
-  links: [
-    {
-      name: "View Source",
-      href: "https://github.com/DCFoundation/cosmos-proposal-builder",
-    },
-    {
-      name: "Request a Feature",
-      href: "https://github.com/DCFoundation/cosmos-proposal-builder/issues/new?template=feature_request.md&labels=enhancement",
-    },
-    {
-      name: "Report a Bug",
-      href: "https://github.com/DCFoundation/cosmos-proposal-builder/issues/new?template=bug_report.md&labels=bug",
-    },
-  ],
-  text: undefined,
 };
 
 export { Footer };

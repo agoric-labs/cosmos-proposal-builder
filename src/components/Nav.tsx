@@ -9,7 +9,11 @@ interface NavProps {
   rightContent?: ReactNode;
 }
 
-const Nav = ({ title, showLogo, rightContent }: NavProps) => (
+const Nav = ({
+  title = "Cosmos Proposal Builder",
+  showLogo = true,
+  rightContent,
+}: NavProps) => (
   <nav className="">
     <div className="mx-auto max-w-7xl">
       <div className="flex h-16 items-center justify-between px-2 pt-6">
@@ -49,10 +53,5 @@ const Nav = ({ title, showLogo, rightContent }: NavProps) => (
     </div>
   </nav>
 );
-
-Nav.defaultProps = {
-  title: "Cosmos Proposal Builder",
-  showLogo: true,
-};
 
 export { Nav };

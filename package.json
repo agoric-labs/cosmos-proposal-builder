@@ -84,6 +84,17 @@
     "cosmjs-types": "npm:^0.10.1",
     "ses": "1.3.0"
   },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": false
+    },
+    "esbuild": {
+      "built": true
+    },
+    "microtime": {
+      "built": true
+    }
+  },
   "packageManager": "yarn@4.12.0",
   "engines": {
     "node": ">=22 <23"

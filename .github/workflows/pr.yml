@@ -10,9 +10,9 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Use Node.js 18.8.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.8.x'
+          node-version: '22.x'
       - name: corepack enable
         run: corepack enable
       - name: yarn install
@@ -37,9 +37,9 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Use Node.js 18.8.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.8.x'
+          node-version: '22.x'
       - name: corepack enable
         run: corepack enable
       - name: yarn install

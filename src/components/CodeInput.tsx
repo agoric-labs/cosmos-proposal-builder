@@ -7,6 +7,7 @@ import { DragDrop, DragDropProps } from "./DragDrop";
 import { IconButton } from "./IconButton";
 import { classNames } from "../utils/classNames";
 import { scaleToDenomBase } from "../utils/coin";
+import { calculateBundleCost, calculateRemainingCost } from "../installBundle";
 
 interface CodeInputProps {
   label: string;
@@ -71,18 +72,15 @@ const CodeInput = forwardRef<CodeInputMethods, CodeInputProps>(
       getBundleCost: () => bundleCost,
     }));
 
-    const bundleCost = useMemo(() => {
-      if (!costPerByte || !size) return null;
-      return [costPerByte[0] * size, costPerByte[1]] as typeof costPerByte;
-    }, [costPerByte, size]);
+    const bundleCost = useMemo(
+      () => calculateBundleCost(costPerByte, size),
+      [costPerByte, size],
+    );
 
-    const remainingCost = useMemo(() => {
-      if (!bundleCost || !accountBalances) return bundleCost;
-      const [amount, denom] = bundleCost;
-      const denomBalance = accountBalances.find((x) => x.denom === denom);
-      if (!denomBalance) return bundleCost;
-      return Math.max(amount - Number(denomBalance.amount), 0);
-    }, [bundleCost, accountBalances]);
+    const remainingCost = useMemo(
+      () => calculateRemainingCost(bundleCost, accountBalances),
+      [bundleCost, accountBalances],
+    );
 
     return (
       <div className="flex flex-col">

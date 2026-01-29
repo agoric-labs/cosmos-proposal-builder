@@ -4,6 +4,9 @@ import App from "./App";
 import { ContextProviders } from "./contexts/providers.tsx";
 
 describe("App.tsx", () => {
+  describe.todo("selecting value puts chain in pathname");
+  describe.todo("changing value resets the network dropdown value");
+
   it("renders app title", async () => {
     render(
       <ContextProviders>
@@ -41,9 +44,6 @@ describe("App.tsx", () => {
       name: "Select Chain",
     });
     expect(selectElements.length).toBeGreaterThan(0);
-
-    describe.todo("selecting value puts chain in pathname");
-    describe.todo("changing value resets the network dropdown value");
   });
 
   it("renders the network dropdown", async () => {

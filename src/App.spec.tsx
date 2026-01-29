@@ -44,7 +44,6 @@ describe("App.tsx", () => {
       name: "Select Chain",
     });
     expect(selectElements.length).toBeGreaterThan(0);
-
   });
 
   it("renders the network dropdown", async () => {

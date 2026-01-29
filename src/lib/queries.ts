@@ -23,7 +23,7 @@ import type {
 
 export const swingSetParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<SwingSetParams, unknown> => ({
+): UseQueryOptions<SwingSetParams, Error> => ({
   queryKey: ["swingSetParams", api],
   queryFn: async (): Promise<SwingSetParams> => {
     const res = await fetch(`${api}/agoric/swingset/params`);
@@ -36,7 +36,7 @@ export const swingSetParamsQuery = (
 export const accountBalancesQuery = (
   api: string | undefined,
   address: string | null,
-): UseQueryOptions<BankBalances, unknown> => ({
+): UseQueryOptions<BankBalances, Error> => ({
   queryKey: ["accountBalances", api, address],
   queryFn: async (): Promise<BankBalances> => {
     const res = await fetch(`${api}/cosmos/bank/v1beta1/balances/${address}`);
@@ -49,7 +49,7 @@ export const accountBalancesQuery = (
 
 export const bankAssetsQuery = (
   api: string | undefined,
-): UseQueryOptions<Coin[], unknown> => ({
+): UseQueryOptions<Coin[], Error> => ({
   queryKey: ["bankAssets", api],
   queryFn: async (): Promise<Coin[]> => {
     const res = await fetch(`${api}/cosmos/bank/v1beta1/supply`);
@@ -62,7 +62,7 @@ export const bankAssetsQuery = (
 /** @deprecated do not use, does not return values for agd */
 export const bankAssetsMetadataQuery = (
   api: string | undefined,
-): UseQueryOptions<BankAssetMetadataResponse["metadatas"], unknown> => ({
+): UseQueryOptions<BankAssetMetadataResponse["metadatas"], Error> => ({
   queryKey: ["bankAssetsMetadata", api],
   queryFn: async (): Promise<BankAssetMetadataResponse["metadatas"]> => {
     const res = await fetch(`${api}/cosmos/bank/v1beta1/denoms_metadata`);
@@ -74,7 +74,7 @@ export const bankAssetsMetadataQuery = (
 
 export const votingParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<VotingParams, unknown> => ({
+): UseQueryOptions<VotingParams, Error> => ({
   queryKey: ["votingParams", api],
   queryFn: async (): Promise<VotingParams> => {
     const res = await fetch(`${api}/cosmos/gov/v1beta1/params/voting`);
@@ -86,7 +86,7 @@ export const votingParamsQuery = (
 
 export const tallyParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<TallyParams, unknown> => ({
+): UseQueryOptions<TallyParams, Error> => ({
   queryKey: ["tallyParams", api],
   queryFn: async (): Promise<TallyParams> => {
     const res = await fetch(`${api}/cosmos/gov/v1beta1/params/tallying`);
@@ -98,7 +98,7 @@ export const tallyParamsQuery = (
 
 export const depositParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<DepositParams, unknown> => ({
+): UseQueryOptions<DepositParams, Error> => ({
   queryKey: ["depositParams", api],
   queryFn: async (): Promise<DepositParams> => {
     const res = await fetch(`${api}/cosmos/gov/v1beta1/params/deposit`);
@@ -110,7 +110,7 @@ export const depositParamsQuery = (
 
 export const distributionParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<DistributionParams, unknown> => ({
+): UseQueryOptions<DistributionParams, Error> => ({
   queryKey: ["distributionParams", api],
   queryFn: async (): Promise<DistributionParams> => {
     const res = await fetch(`${api}/cosmos/distribution/v1beta1/params`);
@@ -122,7 +122,7 @@ export const distributionParamsQuery = (
 
 export const stakingParamsQuery = (
   api: string | undefined,
-): UseQueryOptions<StakingParams, unknown> => ({
+): UseQueryOptions<StakingParams, Error> => ({
   queryKey: ["stakingParams", api],
   queryFn: async (): Promise<StakingParams> => {
     const res = await fetch(`${api}/cosmos/staking/v1beta1/params`);
@@ -134,7 +134,7 @@ export const stakingParamsQuery = (
 
 export const ibcDenomTracesQuery = (
   api: string | undefined,
-): UseQueryOptions<DenomTrace[], unknown> => ({
+): UseQueryOptions<DenomTrace[], Error> => ({
   queryKey: ["ibcDenomTraces", api],
   queryFn: async (): Promise<DenomTrace[]> => {
     const res = await fetch(`${api}/ibc/apps/transfer/v1/denom_traces`);
@@ -147,7 +147,7 @@ export const ibcDenomTracesQuery = (
 export const ibcDenomTraceQuery = (
   api: string | undefined,
   hash: string, // can include or exclude `ibc/`
-): UseQueryOptions<DenomTrace, unknown> => ({
+): UseQueryOptions<DenomTrace, Error> => ({
   queryKey: ["ibcDenomTrace", api, hash],
   queryFn: async (): Promise<DenomTrace> => {
     const res = await fetch(`${api}/ibc/apps/transfer/v1/denom_traces/${hash}`);
@@ -161,7 +161,7 @@ export const ibcDenomHashQuery = (
   api: string | undefined,
   path: string, // i.e., transfer/channel-1
   baseDenom: string, // i.e., uatom
-): UseQueryOptions<DenomHash, unknown> => ({
+): UseQueryOptions<DenomHash, Error> => ({
   queryKey: ["ibcDenomHash", api, path, baseDenom],
   queryFn: async (): Promise<DenomHash> => {
     const res = await fetch(

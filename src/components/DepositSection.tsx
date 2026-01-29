@@ -23,8 +23,8 @@ export const DepositSection: React.FC<unknown> = () => {
     queries: [depositParamsQuery(api), votingParamsQuery(api)],
     combine: (
       results: [
-        UseQueryResult<DepositParams, unknown>,
-        UseQueryResult<VotingParams, unknown>,
+        UseQueryResult<DepositParams, Error>,
+        UseQueryResult<VotingParams, Error>,
       ],
     ) => {
       const [deposit, voting] = results;

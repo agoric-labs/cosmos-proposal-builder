@@ -1,5 +1,6 @@
 export const gzip = async (uncompressedBytes: Uint8Array) => {
-  const uncompressedBlob = new Blob([uncompressedBytes], {
+  const safeBytes = new Uint8Array(uncompressedBytes);
+  const uncompressedBlob = new Blob([safeBytes], {
     type: "application/octet-stream",
   });
   const compressionStream = new CompressionStream("gzip");

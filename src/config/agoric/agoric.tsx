@@ -76,8 +76,8 @@ const Agoric = () => {
     queries: [depositParamsQuery(api), votingParamsQuery(api)],
     combine: (
       results: [
-        UseQueryResult<DepositParams, unknown>,
-        UseQueryResult<VotingParams, unknown>,
+        UseQueryResult<DepositParams, Error>,
+        UseQueryResult<VotingParams, Error>,
       ],
     ) => {
       const [deposit, voting] = results;
